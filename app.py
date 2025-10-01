@@ -1,23 +1,30 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+import torch
 
-MODEL_NAME = "tahsin/bangla-sentiment-analysis-bert-base-multilingual"
+# একটি জনপ্রিয় এবং পরীক্ষিত বহুভাষিক মডেল ব্যবহার করা হচ্ছে যা বাংলা সাপোর্ট করে
+MODEL_NAME = "cardiffnlp/twitter-xlm-roberta-base-sentiment-multilingual"
 
-print(f"Loading Bengali model: {MODEL_NAME}")
+print(f"Loading the final, reliable model: {MODEL_NAME}")
 
+# ধাপ ১: টোকেনাইজার ম্যানুয়ালি লোড করা
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+# ধাপ ২: মডেল ম্যানুয়ালি লোড করা
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 
 print("Model and tokenizer loaded successfully!")
 
+# ধাপ ৩: পাইপলাইন তৈরি করা
 sentiment_pipeline = pipeline(
-    task="text-classification",
+    task="sentiment-analysis",
     model=model,
     tokenizer=tokenizer
 )
 print("Pipeline created successfully!")
 
+# --- FastAPI অ্যাপের বাকি অংশ ---
 app = FastAPI()
 
 class TextInput(BaseModel):
@@ -30,4 +37,4 @@ def analyze_text(request: TextInput):
 
 @app.get("/")
 def read_root():
-    return {"message": "Bengali Sentiment Analysis API on Render is running!"}
+    return {"message": "Multilingual Sentiment Analysis API is running!"}
