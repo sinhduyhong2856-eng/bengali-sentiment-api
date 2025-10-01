@@ -3,28 +3,29 @@ from pydantic import BaseModel
 from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
-# একটি জনপ্রিয় এবং পরীক্ষিত বহুভাষিক মডেল ব্যবহার করা হচ্ছে যা বাংলা সাপোর্ট করে
-MODEL_NAME = "cardiffnlp/twitter-xlm-roberta-base-sentiment-multilingual"
+# --- বিশেষজ্ঞ দলের সদস্যদের লোড করা হচ্ছে ---
 
-print(f"Loading the final, reliable model: {MODEL_NAME}")
+print("Loading Specialist Team Models...")
 
-# ধাপ ১: টোকেনাইজার ম্যানুয়ালি লোড করা
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-
-# ধাপ ২: মডেল ম্যানুয়ালি লোড করা
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-
-print("Model and tokenizer loaded successfully!")
-
-# ধাপ ৩: পাইপলাইন তৈরি করা
+# বিশেষজ্ঞ ১: Sentiment Analysis-এর জন্য
+SENTIMENT_MODEL_NAME = "cardiffnlp/twitter-xlm-roberta-base-sentiment-multilingual"
 sentiment_pipeline = pipeline(
     task="sentiment-analysis",
-    model=model,
-    tokenizer=tokenizer
+    model=SENTIMENT_MODEL_NAME
 )
-print("Pipeline created successfully!")
+print("Sentiment specialist is ready!")
 
-# --- FastAPI অ্যাপের বাকি অংশ ---
+# বিশেষজ্ঞ ২: Intent Detection-এর জন্য
+INTENT_MODEL_NAME = "facebook/bart-large-mnli"
+intent_pipeline = pipeline(
+    task="zero-shot-classification",
+    model=INTENT_MODEL_NAME
+)
+print("Intent specialist is ready!")
+
+print("Specialist Team successfully assembled!")
+
+# --- FastAPI অ্যাপ ---
 app = FastAPI()
 
 class TextInput(BaseModel):
@@ -32,9 +33,26 @@ class TextInput(BaseModel):
 
 @app.post("/analyze")
 def analyze_text(request: TextInput):
-    result = sentiment_pipeline(request.text)
-    return {"input_text": request.text, "sentiment_analysis": result}
+    # Intent-এর জন্য আমরা কী কী খুঁজতে চাই, তার একটি তালিকা
+    intent_labels = [
+        "product inquiry", "price question", "delivery issue", 
+        "complaint", "gratitude", "order placement", "general conversation"
+    ]
+
+    # দুইজন বিশেষজ্ঞকেই তাদের কাজ দেওয়া হচ্ছে
+    sentiment_result = sentiment_pipeline(request.text)
+    intent_result = intent_pipeline(request.text, candidate_labels=intent_labels)
+
+    # দুজনের ফলাফল একত্রিত করে চূড়ান্ত রিপোর্ট তৈরি
+    return {
+        "input_text": request.text,
+        "sentiment_analysis": sentiment_result[0],
+        "intent_analysis": {
+            "main_intent": intent_result['labels'][0],
+            "all_scores": dict(zip(intent_result['labels'], intent_result['scores']))
+        }
+    }
 
 @app.get("/")
 def read_root():
-    return {"message": "Multilingual Sentiment Analysis API is running!"}
+    return {"message": "Specialist Team Analysis API is running!"}
