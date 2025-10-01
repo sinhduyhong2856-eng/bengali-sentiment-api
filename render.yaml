@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: bengali-sentiment-api
+    env: docker
+    healthCheckPath: /
+    initialDelaySeconds: 600 # সেকেন্ডে, অর্থাৎ ১০ মিনিট
